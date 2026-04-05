@@ -1,0 +1,64 @@
+# Pre-commit hooks for KinSync
+# ─────────────────────────────────────────────────────────────────────────────
+# Install locally:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Run manually against all files:
+#   pre-commit run --all-files
+# ─────────────────────────────────────────────────────────────────────────────
+
+repos:
+  # ── General hygiene ────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key          # block PEM private keys
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+
+  # ── Secret & credential detection (Gitleaks) ───────────────────────────────
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        name: Detect hardcoded secrets (gitleaks)
+        # Blocks commits that contain API keys, tokens, passwords, etc.
+
+  # ── Custom KinSync forbidden-pattern checks ────────────────────────────────
+  - repo: local
+    hooks:
+      - id: block-gemini-api-key
+        name: Block hardcoded Google/Gemini API keys
+        language: pygrep
+        entry: 'AIza[0-9A-Za-z_\-]{35}'
+        types_or: [text]
+        exclude: '\.(md|txt|example)$'
+
+      - id: block-inline-api-secrets
+        name: Block inline API_KEY / API_SECRET assignments
+        language: pygrep
+        # Covers quoted strings, unquoted values, and backtick template literals
+        entry: '(API_KEY|API_SECRET|SECRET_KEY|APP_SECRET)\s*=\s*(`.{8,}`|["\047][^"\047]{8,}["\047]|[^"\047`\s\$\{][^\s,;]{7,})'
+        types_or: [text]
+        exclude: '\.(md|txt|example)$'
+
+      - id: block-inline-salt
+        name: Block hardcoded SALT / PEPPER values
+        language: pygrep
+        # Min 8 chars to avoid false positives from test/doc short strings
+        entry: '(SALT|PEPPER|HASH_SALT)\s*=\s*["\047][^"\047]{8,}["\047]'
+        types_or: [text]
+        exclude: '\.(md|txt|example)$'
+
+      - id: block-env-files
+        name: Prevent committing .env files
+        language: fail
+        entry: "Committing .env files is not allowed — use .env.example instead"
+        files: '^\.env(\..+)?$'
+        exclude: '\.env\.example$'
