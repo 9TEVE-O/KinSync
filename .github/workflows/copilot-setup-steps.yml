@@ -34,7 +34,7 @@ jobs:
             - name: Install Hermes Agent
 - run: curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup
 + run: |
-+   curl -fsSL -o /tmp/install.sh https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh
+  curl -fsSL --fail --retry 3 --retry-delay 5 -o /tmp/install.sh https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh
 +   echo "Expected checksum here" | sha256sum -c -
 +   bash /tmp/install.sh --skip-setup
 
