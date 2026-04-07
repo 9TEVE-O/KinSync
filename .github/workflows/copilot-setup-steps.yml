@@ -36,7 +36,12 @@ jobs:
 + run: |
   curl -fsSL --fail --retry 3 --retry-delay 5 -o /tmp/install.sh https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh
 +   echo "Expected checksum here" | sha256sum -c -
-+   bash /tmp/install.sh --skip-setup
+  bash /tmp/install.sh --skip-setup
+  INSTALL_EXIT_CODE=$?
+  if [ $INSTALL_EXIT_CODE -ne 0 ]; then
+    echo "Hermes Agent installation failed with exit code $INSTALL_EXIT_CODE"
+    exit $INSTALL_EXIT_CODE
+  fi
 
             - name: Verify Hermes Agent installation
               run: test -d "$HOME/.hermes/hermes-agent"
