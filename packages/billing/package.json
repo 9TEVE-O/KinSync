@@ -1,0 +1,20 @@
+{
+  "name": "@kinsync/billing",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kinsync/db": "*",
+    "stripe": "^17.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
