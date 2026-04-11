@@ -1,17 +1,27 @@
 import { Router } from "express";
 import { z } from "zod";
+import rateLimit from "express-rate-limit";
 import { findOrCreateUser, createSession, deleteSession, markEmailVerified, signToken } from "@kinsync/auth";
 import { sendMagicLink } from "@kinsync/email";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 export const authRouter = Router();
 
+// Limit magic-link requests to 5 per 15 minutes per IP
+const magicLinkLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many sign-in attempts. Please try again later." },
+});
+
 const SendMagicLinkSchema = z.object({
   email: z.string().email(),
 });
 
 // POST /api/auth/magic-link – send a sign-in link
-authRouter.post("/magic-link", async (req, res, next) => {
+authRouter.post("/magic-link", magicLinkLimiter, async (req, res, next) => {
   try {
     const { email } = SendMagicLinkSchema.parse(req.body);
     const user = await findOrCreateUser(email);
