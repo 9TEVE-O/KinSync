@@ -11,6 +11,9 @@ Copy that file to `.env` before running the app.
 |----------|---------|-------------|
 | `DATABASE_URL` | `packages/db` | PostgreSQL connection string |
 | `JWT_SECRET` | `packages/auth` | ≥ 32-char secret for signing JWTs |
+| `SMTP_HOST` | `packages/email` | SMTP host (use `localhost` with MailHog) |
+| `SMTP_USER` | `packages/email` | SMTP username (not required for MailHog) |
+| `SMTP_PASS` | `packages/email` | SMTP password (not required for MailHog) |
 
 ---
 
@@ -22,10 +25,7 @@ Copy that file to `.env` before running the app.
 | `PORT` | `3001` | API server port |
 | `WEB_URL` | `http://localhost:3000` | Frontend URL (used in magic links) |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | API URL (used in frontend) |
-| `SMTP_HOST` | – | SMTP host. Use `localhost` with MailHog. |
-| `SMTP_PORT` | `587` | SMTP port. Use `1025` with MailHog. |
-| `SMTP_USER` | – | SMTP username (not required for MailHog) |
-| `SMTP_PASS` | – | SMTP password (not required for MailHog) |
+| `SMTP_PORT` | `587` | SMTP port (use `1025` with MailHog) |
 | `EMAIL_FROM` | `KinSync <noreply@kinsync.app>` | From address on outgoing emails |
 
 ---

@@ -1,6 +1,19 @@
 import nodemailer from "nodemailer";
 
 // ──────────────────────────────────────────
+// HTML escaping helper
+// ──────────────────────────────────────────
+
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// ──────────────────────────────────────────
 // Transport
 // ──────────────────────────────────────────
 
@@ -72,13 +85,17 @@ export async function sendFamilyInvite(
   familyName: string,
   inviteUrl: string
 ): Promise<void> {
+  const escapedInviterName = escapeHtml(inviterName);
+  const escapedFamilyName = escapeHtml(familyName);
+  const escapedInviteUrl = encodeURI(inviteUrl);
+
   await sendEmail({
     to: email,
     subject: `${inviterName} invited you to join ${familyName} on KinSync`,
     html: `
       <p>Hi,</p>
-      <p>${inviterName} has invited you to join the <strong>${familyName}</strong> family on KinSync.</p>
-      <p><a href="${inviteUrl}">Accept invitation</a></p>
+      <p>${escapedInviterName} has invited you to join the <strong>${escapedFamilyName}</strong> family on KinSync.</p>
+      <p><a href="${escapedInviteUrl}">Accept invitation</a></p>
     `,
     text: `${inviterName} invited you to join ${familyName} on KinSync: ${inviteUrl}`,
   });
@@ -88,11 +105,13 @@ export async function sendWelcomeEmail(
   email: string,
   name: string
 ): Promise<void> {
+  const escapedName = escapeHtml(name);
+
   await sendEmail({
     to: email,
     subject: "Welcome to KinSync",
     html: `
-      <p>Hi ${name},</p>
+      <p>Hi ${escapedName},</p>
       <p>Welcome to KinSync – your family, in sync.</p>
       <p>Get started by creating your first family or inviting members.</p>
     `,

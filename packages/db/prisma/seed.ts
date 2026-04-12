@@ -44,12 +44,18 @@ async function main() {
   });
 
   // Create a demo event
-  await prisma.familyEvent.create({
-    data: {
+  const startAt = new Date("2026-12-25T10:00:00Z");
+  await prisma.familyEvent.upsert({
+    where: {
+      id: "demo-event",
+    },
+    update: {},
+    create: {
+      id: "demo-event",
       familyId: family.id,
       title: "Family Reunion",
       description: "Annual family get-together",
-      startAt: new Date("2026-12-25T10:00:00Z"),
+      startAt: startAt,
       endAt: new Date("2026-12-25T18:00:00Z"),
     },
   });

@@ -6,9 +6,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     setLoading(true);
     try {
       const res = await fetch("/api/auth/magic-link", {
@@ -16,8 +18,20 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) throw new Error("Failed to send magic link");
+      if (!res.ok) {
+        let message = res.statusText;
+        try {
+          const data = await res.json();
+          if (data.error) message = data.error;
+        } catch {
+          // Ignore JSON parse errors, use statusText
+        }
+        setError(message);
+        return;
+      }
       setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -43,10 +57,18 @@ export default function LoginPage() {
           id="email"
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setError(null);
+          }}
           required
           style={{ width: "100%", padding: "0.5rem", marginTop: "0.25rem", marginBottom: "1rem" }}
         />
+        {error && (
+          <div style={{ color: "red", marginBottom: "1rem" }}>
+            {error}
+          </div>
+        )}
         <button type="submit" disabled={loading} style={{ padding: "0.5rem 1rem" }}>
           {loading ? "Sending…" : "Send magic link"}
         </button>

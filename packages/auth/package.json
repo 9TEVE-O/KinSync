@@ -2,11 +2,13 @@
   "name": "@kinsync/auth",
   "version": "0.1.0",
   "private": true,
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./dist/index.js"
   },
   "scripts": {
+    "build": "tsc",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },

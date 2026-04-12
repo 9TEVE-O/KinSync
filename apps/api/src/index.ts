@@ -43,6 +43,10 @@ app.use("/api/billing", billingRouter);
 app.use(errorHandler);
 
 const PORT = parseInt(process.env["PORT"] ?? "3001", 10);
+if (!Number.isFinite(PORT) || PORT <= 0) {
+  console.error(`Invalid PORT: ${PORT}. Must be a finite positive integer.`);
+  process.exit(1);
+}
 app.listen(PORT, () => {
   console.log(`🚀 API running on http://localhost:${PORT}`);
 });
