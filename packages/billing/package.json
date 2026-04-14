@@ -1,0 +1,22 @@
+{
+  "name": "@kinsync/billing",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kinsync/db": "*",
+    "stripe": "^17.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
