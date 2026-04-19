@@ -2,7 +2,12 @@
 
 ## Project overview
 
-**KinSync** is a family-coordination SaaS scaffold. Its tagline is "Your family, in sync." It provides shared calendar events, family membership management, magic-link authentication, and Stripe-powered billing in a TypeScript monorepo.
+**KinSync** is a family-coordination SaaS scaffold. Its tagline is "Your family, in sync." It provides shared calendar events, family membership management, magic-link authentication, and Stripe-powered billing in a TypeScript monorepo. Key capabilities:
+
+- **Passwordless auth** — magic-link email sign-in via JWT sessions
+- **Family management** — create/join families, manage members and shared events
+- **Billing** — Stripe-powered subscription checkout and billing portal
+- **Email** — transactional emails (magic links, invites, welcome messages) via Nodemailer/SMTP
 
 **Hermes Agent** (by [Nous Research](https://nousresearch.com)) is the self-improving AI coding agent configured to assist development in this repository. It is installed via the `copilot-setup-steps` workflow (`.github/workflows/copilot-setup-steps.yml`) and runs at `~/.hermes/hermes-agent`. Hermes provides a persistent, learning-loop agent with memory, skill creation, MCP integration, and multi-platform messaging (Telegram, Discord, Slack, etc.).
 
@@ -13,21 +18,32 @@
 ```
 KinSync/
 ├── apps/
-│   ├── web/          Next.js 15 frontend (React App Router, TypeScript)
-│   └── api/          Express API server (TypeScript, ESM)
+│   ├── web/          Next.js 15 frontend (React App Router, TypeScript)  → http://localhost:3000
+│   └── api/          Express 4 API server (TypeScript, ESM)              → http://localhost:3001
 ├── packages/
-│   ├── auth/         JWT sessions, magic-link helpers  (@kinsync/auth)
-│   ├── billing/      Stripe checkout, portal, webhook  (@kinsync/billing)
-│   ├── db/           Prisma schema, client, migrations (@kinsync/db)
-│   └── email/        Nodemailer transport, templates   (@kinsync/email)
+│   ├── auth/         JWT sessions, magic-link helpers  (@kinsync/auth)   (entry: src/index.ts)
+│   ├── billing/      Stripe checkout, portal, webhook  (@kinsync/billing) (entry: src/index.ts)
+│   ├── db/           Prisma schema, client, migrations (@kinsync/db)     (entry: prisma/schema.prisma)
+│   └── email/        Nodemailer transport, templates   (@kinsync/email)  (entry: src/index.ts)
 ├── docs/             Architecture, deployment, env-var reference
 ├── .env.example      All environment variables with explanations
-├── docker-compose.yml  Local Postgres + MailHog
+├── docker-compose.yml  Local Postgres 16 + MailHog
 ├── turbo.json        Turbo task pipeline
 └── package.json      Workspace root (npm workspaces + Turbo)
 ```
 
 **Internal package names** use the `@kinsync/` scope. Import packages by name — never by relative path across package boundaries.
+
+**Dependency direction** (packages never import from apps; apps never import from each other):
+
+```
+apps/api   → @kinsync/auth, @kinsync/billing, @kinsync/db, @kinsync/email
+apps/web   → API via HTTP only (no direct package imports)
+@kinsync/auth    → @kinsync/db
+@kinsync/billing → @kinsync/db
+@kinsync/email   (standalone)
+@kinsync/db      (standalone)
+```
 
 ---
 
@@ -37,7 +53,7 @@ KinSync/
 |-------|-----------|
 | Monorepo | npm workspaces + Turborepo |
 | Language | TypeScript 5, ESM (`"type": "module"`) |
-| API | Express 5, Helmet, CORS, Zod for validation, express-rate-limit |
+| API | Express 4, Helmet, CORS, Zod for validation, express-rate-limit |
 | Frontend | Next.js 15, React App Router |
 | Database | PostgreSQL via Prisma ORM |
 | Auth | Magic-link (email) + JWT (`jose` library), 7-day sessions |
@@ -175,6 +191,81 @@ npm run dev                 # starts all apps via Turbo
 
 ---
 
+## Exact build / test / lint / run commands
+
+All commands are run from the **monorepo root** unless otherwise stated.
+
+### Build
+
+```bash
+npm run build          # builds all apps and packages via Turbo
+```
+
+### Lint / type-check
+
+```bash
+npm run lint           # runs tsc --noEmit in every workspace
+npm run typecheck      # alias – same as lint
+```
+
+### Tests
+
+```bash
+npm run test           # runs test scripts in every workspace via Turbo
+```
+
+> **Note:** no test framework is wired up yet. The `test` script is a no-op in
+> each workspace until tests are added. Running `npm run test` is safe but
+> produces no output.
+
+### Individual workspace commands
+
+```bash
+# API only
+cd apps/api && npm run dev          # ts-node-dev hot-reload
+cd apps/api && npm run build        # tsc → dist/
+cd apps/api && npm run start        # node dist/index.js
+
+# Web only
+cd apps/web && npm run dev          # next dev
+cd apps/web && npm run build        # next build
+cd apps/web && npm run start        # next start
+
+# Database (run from monorepo root)
+npm run db:migrate                  # prisma migrate dev
+npm run db:seed                     # prisma db seed
+npm run db:studio                   # prisma studio (browser GUI)
+```
+
+### Optional – local Stripe webhook forwarding
+
+```bash
+stripe login
+stripe listen --forward-to localhost:3001/api/billing/webhook
+# copy the printed webhook secret → STRIPE_WEBHOOK_SECRET in .env
+```
+
+---
+
+## Runtime / tool versions
+
+| Tool | Required version | Notes |
+|------|-----------------|-------|
+| Node.js | ≥ 20 | LTS preferred |
+| npm | ≥ 10 | bundled with Node 20 |
+| Docker | ≥ 24 | for local Postgres + MailHog |
+| Docker Compose | ≥ 2.20 | bundled with Docker Desktop |
+| TypeScript | 5.7.x | dev dependency in every workspace |
+| Next.js | 15.x | `apps/web` |
+| Express | 4.x | `apps/api` |
+| Prisma | 6.x | `packages/db` |
+| Stripe SDK | 17.x | `packages/billing` |
+| jose (JWT) | 5.x | `packages/auth` |
+| Nodemailer | 8.x | `packages/email` (≥ 8.0.5 required – see security note) |
+| Turbo | 2.x | task orchestration |
+
+---
+
 ## Key files reference
 
 | File/Directory | Purpose |
@@ -197,6 +288,25 @@ npm run dev                 # starts all apps via Turbo
 
 ---
 
+## CI / pre-merge checks
+
+The following GitHub Actions workflows run on every pull request:
+
+| Workflow | File | What it checks |
+|----------|------|---------------|
+| **CodeQL – Advanced Security Scanning** | `.github/workflows/codeql.yml` | Static analysis for security vulnerabilities |
+| **Secret & Credential Scanning** | `.github/workflows/secret-scan.yml` | Detects accidentally committed secrets |
+| **Copilot code review** | (dynamic) | Automated PR review by Copilot |
+| **Copilot cloud agent setup** | `.github/workflows/copilot-setup-steps.yml` | Pre-installs agent tooling |
+
+All four checks must pass before a PR can be merged.
+
+**Security notes embedded in the codebase:**
+- `nodemailer` must stay at **≥ 8.0.5** (GHSA-rcmh-qjqh-p98v, high-severity DoS in addressparser).
+- `POST /api/auth/magic-link` is rate-limited to **5 requests / 15 min per IP** via `express-rate-limit` (fixes CodeQL `js/missing-rate-limiting`).
+
+---
+
 ## Important constraints
 
 - **Never commit secrets** — `.env` is gitignored. Use `.env.example` for documentation.
@@ -205,3 +315,103 @@ npm run dev                 # starts all apps via Turbo
 - **Cascade deletes**: all Prisma relations use `onDelete: Cascade` — deleting a User removes all their sessions, family memberships, subscription, and audit logs.
 - **No cross-app imports**: `apps/web` must communicate with `apps/api` over HTTP only.
 - **Migration required after schema changes**: after editing `schema.prisma`, run `npm run db:migrate` to generate and apply the migration.
+
+---
+
+## Common failure modes and workarounds
+
+### `prisma generate` fails at install time
+
+**Symptom:** `npm install` prints a network error about `checkpoint.prisma.io`.  
+**Cause:** Prisma's postinstall hook calls home to a telemetry endpoint that is blocked in restricted network environments (e.g., the Copilot cloud agent sandbox).  
+**Workaround:** The app still works; ignore the telemetry error. If the generated client is missing, run:
+
+```bash
+cd packages/db && PRISMA_GENERATE_SKIP_AUTOINSTALL=true npx prisma generate
+```
+
+### `docker compose up -d` fails (port already in use)
+
+**Symptom:** `bind: address already in use` on port 5432 or 1025.  
+**Workaround:**
+
+```bash
+docker compose down        # stop existing containers
+docker compose up -d       # restart
+```
+
+### TypeScript build fails after pulling new schema changes
+
+**Symptom:** Type errors related to Prisma models after a `git pull`.  
+**Cause:** The generated Prisma client is stale.  
+**Fix:**
+
+```bash
+npm run db:migrate         # applies new migrations
+# postinstall regenerates the client automatically; or run manually:
+cd packages/db && npx prisma generate
+```
+
+### `next build` fails with "Module not found"
+
+**Symptom:** Import errors during `apps/web` build.  
+**Cause:** `apps/web` does **not** import workspace packages directly (it communicates with the API over HTTP). Any direct package import in `apps/web` is a bug.  
+**Fix:** Remove the package import and replace with an `fetch`/`axios` API call.
+
+### Rate-limit errors in development (`429 Too Many Requests`)
+
+**Symptom:** `POST /api/auth/magic-link` returns 429 repeatedly during dev/testing.  
+**Cause:** The 5 req / 15 min rate limiter is active even in `NODE_ENV=development`.  
+**Workaround:** Wait 15 minutes, or restart the API process (the in-memory window resets).
+
+### Stripe webhook signature verification fails (`400 Bad Request`)
+
+**Symptom:** `POST /api/billing/webhook` always returns 400 with a signature error.  
+**Cause:** Either `STRIPE_WEBHOOK_SECRET` is wrong, or the raw-body middleware is not running for that route.  
+**Fix:** Ensure `STRIPE_WEBHOOK_SECRET` matches the secret printed by `stripe listen`. Do **not** add `express.json()` middleware before the `/api/billing/webhook` route (raw body is required).
+
+---
+
+## Validation sequence before stopping
+
+Before marking a task complete, the agent must verify the following in order:
+
+1. **TypeScript compiles without errors**
+   ```bash
+   npm run typecheck
+   ```
+
+2. **Lint passes**
+   ```bash
+   npm run lint
+   ```
+
+3. **Tests pass** (once a test framework is wired up)
+   ```bash
+   npm run test
+   ```
+
+4. **No new secrets committed**  
+   Review `git diff --staged` and confirm no API keys, passwords, or tokens are present in committed files.
+
+5. **No package-version regressions**  
+   If `nodemailer` was touched, verify it remains at `≥ 8.0.5`.  
+   If any new dependency was added, check the GitHub Advisory Database for known CVEs.
+
+6. **Environment variables documented**  
+   Any new env var must appear in `.env.example` with a `[REQUIRED]`, `[OPTIONAL]`, or `[3RD PARTY]` classification and a comment explaining how to obtain/generate it.
+
+7. **Database schema changes migrated**  
+   If `packages/db/prisma/schema.prisma` was modified, a migration must have been created:
+   ```bash
+   cd packages/db && npx prisma migrate dev --name <description>
+   ```
+
+8. **Local smoke-test** (when making API or auth changes)
+   ```bash
+   docker compose up -d
+   npm run db:migrate
+   npm run dev
+   # verify GET http://localhost:3001/health returns { "status": "ok" }
+   curl http://localhost:3001/health
+   ```
