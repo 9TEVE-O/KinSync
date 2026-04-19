@@ -1,0 +1,207 @@
+# GitHub Copilot Instructions — KinSync + Hermes Agent
+
+## Project overview
+
+**KinSync** is a family-coordination SaaS scaffold. Its tagline is "Your family, in sync." It provides shared calendar events, family membership management, magic-link authentication, and Stripe-powered billing in a TypeScript monorepo.
+
+**Hermes Agent** (by [Nous Research](https://nousresearch.com)) is the self-improving AI coding agent configured to assist development in this repository. It is installed via the `copilot-setup-steps` workflow (`.github/workflows/copilot-setup-steps.yml`) and runs at `~/.hermes/hermes-agent`. Hermes provides a persistent, learning-loop agent with memory, skill creation, MCP integration, and multi-platform messaging (Telegram, Discord, Slack, etc.).
+
+---
+
+## Monorepo structure
+
+```
+KinSync/
+├── apps/
+│   ├── web/          Next.js 15 frontend (React App Router, TypeScript)
+│   └── api/          Express API server (TypeScript, ESM)
+├── packages/
+│   ├── auth/         JWT sessions, magic-link helpers  (@kinsync/auth)
+│   ├── billing/      Stripe checkout, portal, webhook  (@kinsync/billing)
+│   ├── db/           Prisma schema, client, migrations (@kinsync/db)
+│   └── email/        Nodemailer transport, templates   (@kinsync/email)
+├── docs/             Architecture, deployment, env-var reference
+├── .env.example      All environment variables with explanations
+├── docker-compose.yml  Local Postgres + MailHog
+├── turbo.json        Turbo task pipeline
+└── package.json      Workspace root (npm workspaces + Turbo)
+```
+
+**Internal package names** use the `@kinsync/` scope. Import packages by name — never by relative path across package boundaries.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|-------|-----------|
+| Monorepo | npm workspaces + Turborepo |
+| Language | TypeScript 5, ESM (`"type": "module"`) |
+| API | Express 5, Helmet, CORS, Zod for validation, express-rate-limit |
+| Frontend | Next.js 15, React App Router |
+| Database | PostgreSQL via Prisma ORM |
+| Auth | Magic-link (email) + JWT (`jose` library), 7-day sessions |
+| Billing | Stripe (checkout sessions, customer portal, webhooks) |
+| Email | Nodemailer with MailHog for local dev |
+| Testing | (add per package) |
+| Linting | TypeScript strict mode |
+| Node | ≥ 20, npm ≥ 10 |
+
+---
+
+## Key architectural rules
+
+1. **Package isolation**: No package imports from `apps/`. Apps import from packages, never from each other. The dependency graph is:
+   ```
+   apps/api   → @kinsync/auth, @kinsync/billing, @kinsync/db, @kinsync/email
+   apps/web   → (HTTP calls to API only — no direct package imports yet)
+   @kinsync/auth    → @kinsync/db
+   @kinsync/billing → @kinsync/db
+   @kinsync/email   (standalone)
+   @kinsync/db      (standalone)
+   ```
+
+2. **Thin route handlers**: Business logic lives in `packages/`, not in route handlers. Route handlers only translate HTTP ↔ domain (parse request, call package function, send response).
+
+3. **Environment over configuration**: Third-party credentials (Stripe, SMTP) are injected via environment variables. Packages validate required vars at call time and throw descriptive errors — never silently misconfigure.
+
+4. **Single place per feature**: Adding a domain concept means: extend `schema.prisma` → run migration → add helpers to the relevant package → add route handlers → add pages/components.
+
+---
+
+## Data model (Prisma)
+
+Located at `packages/db/prisma/schema.prisma`. Key models:
+
+| Model | Purpose |
+|-------|---------|
+| `User` | Core user record (cuid ID, email unique, emailVerified) |
+| `Session` | Auth sessions (token, expiresAt, 7-day TTL) |
+| `Family` | Family group (name, description) |
+| `FamilyMember` | Join table: User ↔ Family with role (`OWNER`, `ADMIN`, `MEMBER`) |
+| `FamilyEvent` | Calendar events scoped to a Family (startAt, endAt) |
+| `Subscription` | Stripe subscription (one-to-one with User) |
+| `AuditLog` | Append-only audit trail (userId optional, action, resource) |
+
+IDs are cuid strings. Cascade deletes are set on all child relations. The `@@map` directive maps models to snake_case table names.
+
+---
+
+## API routes
+
+Base path: `http://localhost:3001`
+
+| Method | Path | Auth required | Description |
+|--------|------|--------------|-------------|
+| GET | `/health` | No | Health check |
+| POST | `/api/auth/magic-link` | No | Send magic-link email (rate-limited: 5/15 min) |
+| GET | `/api/auth/verify?token=` | No | Exchange JWT for session token |
+| POST | `/api/auth/logout` | Yes | Invalidate session |
+| GET | `/api/auth/me` | Yes | Return current user |
+| * | `/api/families/*` | Yes | Family CRUD + members + events |
+| * | `/api/billing/*` | Yes/Stripe | Stripe checkout, portal, webhook |
+
+**Auth middleware** (`apps/api/src/middleware/requireAuth.ts`): reads `Authorization: Bearer <token>` header, validates the session via `@kinsync/auth`, and attaches `req.user` (extends Express `Request` type).
+
+**Error handler** (`apps/api/src/middleware/errorHandler.ts`): catches Zod `ZodError` (400), known API errors, and falls back to 500. Always returns `{ error: string }`.
+
+**Webhook route** (`/api/billing/webhook`): uses `express.raw()` instead of `express.json()` — Stripe needs the raw body for signature verification.
+
+---
+
+## Coding conventions
+
+- **TypeScript strict mode** — no `any`, no `ts-ignore` without a comment explaining why.
+- **ESM only** — use `.js` extensions in imports even for `.ts` source files (e.g., `import { foo } from "./bar.js"`).
+- **Zod for all external input** — validate request bodies and query params with Zod schemas before use. Parse with `.parse()` (throws) or `.safeParse()` (returns result object).
+- **Async/await with try/catch → next(err)** — all async route handlers must pass errors to `next(err)`.
+- **Environment variable access**: always use `process.env["VAR_NAME"]` (bracket notation) — never `process.env.VAR_NAME`.
+- **No logic in routes**: extract domain logic to the appropriate `packages/` module.
+- **Prisma**: always import `prisma` client from `@kinsync/db`. Never instantiate a new PrismaClient in app code.
+- **Comments**: use `// ──────────────────────────────────────────` section dividers for logical groupings (consistent with existing code style).
+- **cuid IDs**: all models use `@id @default(cuid())` — generate or reference IDs as strings.
+
+---
+
+## Hermes Agent integration
+
+The Hermes Agent is installed into the Copilot environment via the workflow at `.github/workflows/copilot-setup-steps.yml`. It installs from the official NousResearch installer (`https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh`) to `~/.hermes/hermes-agent`.
+
+**Key Hermes concepts relevant to this repo:**
+- **Skills**: reusable procedural knowledge Hermes creates after complex tasks. Skills live in `~/.hermes/skills/`.
+- **Memory**: Hermes persists context across sessions. Use `MEMORY.md` / `USER.md` patterns for persistent context.
+- **Context files**: `AGENTS.md` at the repo root (if present) is automatically loaded by Hermes as workspace instructions. Write architectural decisions and constraints there.
+- **MCP servers**: Hermes supports Model Context Protocol — can be extended with additional tool servers.
+- **Terminal backends**: Hermes can run tools locally, in Docker, via SSH, or on serverless platforms (Daytona, Modal).
+
+**Hermes CLI quick reference (for Copilot agent tasks):**
+```bash
+hermes              # Start interactive session
+hermes model        # Switch LLM provider/model
+hermes tools        # Configure enabled tools
+hermes doctor       # Diagnose installation issues
+hermes update       # Update to latest version
+```
+
+---
+
+## Local development setup
+
+```bash
+# Prerequisites: Node ≥ 20, npm ≥ 10, Docker ≥ 24
+npm install
+cp .env.example .env       # then edit .env — set JWT_SECRET at minimum
+docker compose up -d        # start Postgres + MailHog
+npm run db:migrate          # apply Prisma migrations
+npm run db:seed             # seed with sample data
+npm run dev                 # starts all apps via Turbo
+# Web:  http://localhost:3000
+# API:  http://localhost:3001
+# Mail: http://localhost:8025 (MailHog UI)
+```
+
+**Turbo scripts (run from repo root):**
+
+| Script | What it does |
+|--------|-------------|
+| `npm run dev` | Start all apps in watch mode |
+| `npm run build` | Build all packages and apps |
+| `npm run lint` | Lint all workspaces |
+| `npm run test` | Run all tests |
+| `npm run typecheck` | TypeScript type-check all workspaces |
+| `npm run db:migrate` | Run Prisma migrations |
+| `npm run db:seed` | Seed the database |
+| `npm run db:studio` | Open Prisma Studio |
+
+---
+
+## Key files reference
+
+| File/Directory | Purpose |
+|---------------|---------|
+| `packages/db/prisma/schema.prisma` | Single source of truth for the data model |
+| `packages/auth/src/index.ts` | JWT signing/verification, session CRUD, magic-link user helpers |
+| `packages/billing/src/index.ts` | Stripe customer, checkout, portal, webhook processing |
+| `packages/email/src/index.ts` | Nodemailer transport, `sendMagicLink()` and other templates |
+| `packages/db/src/index.ts` | Exports `prisma` singleton client + Prisma types |
+| `apps/api/src/index.ts` | Express app setup: security, routes, error handler |
+| `apps/api/src/middleware/requireAuth.ts` | Session validation middleware |
+| `apps/api/src/middleware/errorHandler.ts` | Centralised error → HTTP response mapping |
+| `apps/api/src/routes/auth.ts` | Auth endpoints (magic-link, verify, logout, me) |
+| `apps/api/src/routes/families.ts` | Family + member + event endpoints |
+| `apps/api/src/routes/billing.ts` | Stripe checkout, portal, webhook endpoints |
+| `.env.example` | Authoritative list of all environment variables |
+| `docs/architecture.md` | Module boundaries, data model, auth & billing flows |
+| `docs/deployment.md` | Railway, Render, Fly.io, Docker deployment guides |
+| `.github/workflows/copilot-setup-steps.yml` | Installs Hermes Agent into the Copilot environment |
+
+---
+
+## Important constraints
+
+- **Never commit secrets** — `.env` is gitignored. Use `.env.example` for documentation.
+- **Stripe webhook**: `/api/billing/webhook` must use `express.raw()` middleware, not `express.json()`. Do not change this.
+- **Rate limiting on auth**: the magic-link endpoint is rate-limited at 5 requests per 15 minutes per IP. Do not remove this.
+- **Cascade deletes**: all Prisma relations use `onDelete: Cascade` — deleting a User removes all their sessions, family memberships, subscription, and audit logs.
+- **No cross-app imports**: `apps/web` must communicate with `apps/api` over HTTP only.
+- **Migration required after schema changes**: after editing `schema.prisma`, run `npm run db:migrate` to generate and apply the migration.
