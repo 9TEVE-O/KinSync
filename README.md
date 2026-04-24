@@ -2,8 +2,14 @@
 
 **Your family, in sync.**
 
-KinSync is a family-coordination SaaS scaffold with clean module boundaries,
-deterministic local setup, and an explicit deployment story.
+KinSync is an original family-coordination SaaS scaffold built around clean module boundaries, deterministic local setup, and a practical deployment path. It is designed as a production-minded application base: clear frontend and API separation, isolated auth/billing/email/database packages, documented environment variables, and a local development flow that can be understood quickly by future contributors.
+
+## What it demonstrates
+
+- Full-stack product scaffolding with Next.js and an API service
+- Isolated packages for auth, billing, database, and email concerns
+- Deterministic local setup using Docker, Prisma, and documented environment files
+- Deployment-aware architecture rather than a demo-only prototype
 
 ---
 
@@ -28,18 +34,18 @@ npm run db:seed
 
 # 5. Start development servers
 npm run dev
-# → Web:  http://localhost:3000
-# → API:  http://localhost:3001
-# → Mail: http://localhost:8025
+# Web:  http://localhost:3000
+# API:  http://localhost:3001
+# Mail: http://localhost:8025
 ```
 
-**Minimum prerequisites:** Node ≥ 20, npm ≥ 10, Docker ≥ 24.
+**Minimum prerequisites:** Node >= 20, npm >= 10, Docker >= 24.
 
 ---
 
 ## Repo structure
 
-```
+```text
 KinSync/
 ├── apps/
 │   ├── web/          Next.js 15 frontend
@@ -61,9 +67,9 @@ KinSync/
 | Doc | Description |
 |-----|-------------|
 | [Getting Started](docs/getting-started.md) | Full local setup walkthrough |
-| [Architecture](docs/architecture.md) | Module boundaries, data model, auth & billing flows |
+| [Architecture](docs/architecture.md) | Module boundaries, data model, auth and billing flows |
 | [Environment Variables](docs/environment-variables.md) | Every variable explained |
-| [Deployment](docs/deployment.md) | Railway, Render, Fly.io, Docker; migrations; webhooks |
+| [Deployment](docs/deployment.md) | Railway, Render, Fly.io, Docker, migrations, and webhooks |
 
 ---
 
@@ -71,8 +77,8 @@ KinSync/
 
 | Criterion | Status |
 |-----------|--------|
-| Setup is deterministic | ✅ 5 steps, no implied knowledge |
-| Repo boundaries are clear | ✅ auth / billing / db / email isolated in packages |
-| Deploy path is explicit | ✅ see [docs/deployment.md](docs/deployment.md) |
-| Third-party integrations are modular | ✅ Stripe in `packages/billing`, SMTP in `packages/email` |
-| Domain logic can stay isolated | ✅ route handlers are thin; logic lives in packages |
+| Setup is deterministic | Pass: 5 steps, no implied knowledge |
+| Repo boundaries are clear | Pass: auth, billing, db, and email isolated in packages |
+| Deploy path is explicit | Pass: see [docs/deployment.md](docs/deployment.md) |
+| Third-party integrations are modular | Pass: Stripe in `packages/billing`, SMTP in `packages/email` |
+| Domain logic can stay isolated | Pass: route handlers are thin; logic lives in packages |
