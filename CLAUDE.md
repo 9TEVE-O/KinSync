@@ -16,7 +16,7 @@ Core capabilities:
 
 ## Monorepo structure
 
-```
+```text
 KinSync/
 ├── apps/
 │   ├── web/          Next.js 15 frontend (React 19, App Router)         → :3000
@@ -38,7 +38,7 @@ Internal packages use the `@kinsync/` scope. Import by package name — never by
 relative path across a package boundary.
 
 **Dependency direction** (enforced by convention, not tooling — respect it):
-```
+```text
 apps/api   → @kinsync/auth, @kinsync/billing, @kinsync/db, @kinsync/email
 apps/web   → API over HTTP only (no direct package imports)
 @kinsync/auth    → @kinsync/db
@@ -111,7 +111,7 @@ Source of truth: `packages/db/prisma/schema.prisma`. After editing it, always ru
 `npm run db:migrate` (creates + applies a migration) before writing code that
 depends on the change — the generated Prisma client will otherwise be stale.
 
-```
+```text
 User ──► Session            (auth, cascade delete)
 User ──► Subscription       (billing, one-to-one, cascade delete)
 User ──► FamilyMember ──► Family
