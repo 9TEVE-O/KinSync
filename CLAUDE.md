@@ -70,9 +70,13 @@ Run from the monorepo root unless noted. Turbo fans these out to every workspace
 npm install              # also runs postinstall → prisma generate
 npm run dev               # start web + api concurrently (turbo, watch mode)
 npm run build              # build all apps/packages
-npm run lint                # tsc --noEmit in every workspace
-npm run typecheck            # alias of lint
-npm run test                  # runs `node --test` where defined (root: LICENSE test)
+npm run lint                # per-workspace: apps/web runs `next lint`; apps/api,
+                             # packages/auth/billing/email run `tsc --noEmit`;
+                             # packages/db has no lint script (turbo skips it)
+npm run typecheck            # tsc --noEmit in every workspace, including packages/db
+                             # — NOT the same set of checks as `npm run lint`
+npm run test                  # turbo run test — no workspace defines a `test`
+                               # script today, so this is currently a no-op
 npm run db:migrate             # prisma migrate dev
 npm run db:seed                  # prisma db seed (depends on db:migrate)
 npm run db:studio                 # prisma studio (browser GUI)
@@ -128,7 +132,9 @@ audit history isn't destroyed when a user is removed.
 | GET | `/api/auth/verify?token=` | No | Exchanges JWT for a session token |
 | POST | `/api/auth/logout` | Yes | |
 | GET | `/api/auth/me` | Yes | |
-| * | `/api/families/*` | Yes | Family CRUD + members + events |
+| GET | `/api/families` | Yes | List the current user's families (with members) |
+| POST | `/api/families` | Yes | Create a family; creator becomes `OWNER` |
+| GET | `/api/families/:id` | Yes | Get one family (with members + events) |
 | * | `/api/billing/*` | Yes / Stripe signature | Checkout, portal, webhook |
 
 - `requireAuth` (`apps/api/src/middleware/requireAuth.ts`) reads
@@ -141,6 +147,10 @@ audit history isn't destroyed when a user is removed.
 - `/api/billing/webhook` is mounted with `express.raw({ type: "application/json" })`
   **before** the global `express.json()` — Stripe requires the raw body to verify
   the signature. Do not reorder this or add JSON parsing ahead of it.
+- The family router (`apps/api/src/routes/families.ts`) currently implements only
+  the three routes above — no update/delete, no membership management, no event
+  endpoints. Don't assume broader CRUD exists; check the router before referencing
+  a family/member/event endpoint that isn't in this table.
 
 ## Coding conventions
 
@@ -194,12 +204,19 @@ Don't copy-paste logic between routes — shared behavior belongs in `packages/`
 
 ## Testing
 
-`npm run test` runs `node --test` per workspace via Turbo. Today the only real
-suite is `tests/license.test.js` at the repo root, which asserts the LICENSE
-file is present, MIT, and correctly attributed to `9TEVE-O`, current copyright
-year included. Individual workspace `test` scripts are effectively no-ops until
-package-level test suites are added — don't assume coverage exists for
-`apps/api`, `apps/web`, or `packages/*` just because `npm run test` exits 0.
+`npm run test` runs `turbo run test`, which fans out to each workspace's `test`
+script — but no workspace (`apps/*`, `packages/*`) currently defines one, so
+`npm run test` exits 0 having run nothing. It does **not** execute anything.
+
+The one real suite in the repo, `tests/license.test.js`, lives outside the
+workspaces (`apps/*`/`packages/*`) turbo scans, and no script invokes it. Run it
+directly if you need it:
+```bash
+node --test tests/license.test.js
+```
+It asserts the LICENSE file is present, MIT, and correctly attributed to
+`9TEVE-O` with the current copyright year. Don't assume any test coverage
+exists for `apps/api`, `apps/web`, or `packages/*` — there is none yet.
 
 ## CI
 
