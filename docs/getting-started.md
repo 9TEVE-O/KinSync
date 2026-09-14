@@ -4,7 +4,7 @@
 
 | Tool | Version | Install |
 |------|---------|---------|
-| Node.js | ≥ 20 | https://nodejs.org |
+| Node.js | ≥ 20.19 | https://nodejs.org |
 | npm | ≥ 10 | bundled with Node |
 | Docker | ≥ 24 | https://docs.docker.com/get-docker/ |
 | Docker Compose | ≥ 2.20 | bundled with Docker Desktop |

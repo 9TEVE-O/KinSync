@@ -60,7 +60,7 @@ No package imports from `apps/`. Apps never import from each other.
 | Auth | Magic-link email + JWT (`jose`), bcryptjs, 7-day sessions |
 | Billing | Stripe SDK 17.x (checkout sessions, customer portal, webhooks) |
 | Email | Nodemailer, MailHog for local dev |
-| Node | ≥ 20, npm ≥ 10 |
+| Node | ≥ 20.19 (`^20.19 \|\| ^22.13 \|\| >=24`), npm ≥ 10 |
 
 ## Commands
 
