@@ -13,15 +13,19 @@ infrastructure is wired up; most product features are not built yet.
 
 - **Families** — create a family; members hold `OWNER` / `ADMIN` / `MEMBER` roles
 - **Shared events** — calendar events scoped to a family (data model in place)
-- **Passwordless sign-in** — magic-link email auth, 7-day JWT sessions
+- **Passwordless sign-in** — magic-link email + 7-day JWT sessions (API side; the web verify page isn't wired up yet — see below)
 - **Billing** — Stripe checkout, customer portal, and subscription webhooks
 - **Transactional email** — magic links via SMTP (MailHog for local dev)
 
 ## What it is not
 
 Not a finished product. Family endpoints today cover only create / list / view —
-no editing, membership management, or event routes yet — and there is no
-automated test coverage for `apps/` or `packages/` beyond a LICENSE check.
+no editing, membership management, or event routes yet. Magic-link sign-in is
+also incomplete end to end: the API issues and verifies tokens
+(`GET /api/auth/verify`), but the web app has no `/auth/verify` page and only
+`/api/*` is proxied to the API, so the emailed link currently 404s instead of
+completing sign-in. There is no automated test coverage for `apps/` or
+`packages/` beyond a LICENSE check.
 
 ---
 
