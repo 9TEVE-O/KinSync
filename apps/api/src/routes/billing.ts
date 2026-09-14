@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import {
   getOrCreateCustomer,
   createCheckoutSession,
@@ -10,11 +11,15 @@ import { requireAuth } from "../middleware/requireAuth.js";
 
 export const billingRouter = Router();
 
+const CheckoutSchema = z.object({
+  priceId: z.string().min(1),
+});
+
 // POST /api/billing/checkout – start a Stripe checkout
 billingRouter.post("/checkout", requireAuth, async (req, res, next) => {
   try {
     const user = req.user!;
-    const { priceId } = req.body as { priceId: string };
+    const { priceId } = CheckoutSchema.parse(req.body);
     const baseUrl = process.env["WEB_URL"] ?? "http://localhost:3000";
 
     const customerId = await getOrCreateCustomer(user.id, user.email);

@@ -11,12 +11,15 @@ function getJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-export async function signToken(userId: string): Promise<string> {
+export async function signToken(
+  userId: string,
+  expiresIn: string = "7d"
+): Promise<string> {
   const secret = getJwtSecret();
   return new SignJWT({ sub: userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(expiresIn)
     .sign(secret);
 }
 

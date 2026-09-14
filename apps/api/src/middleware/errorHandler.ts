@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { ZodError } from "zod";
 
 export function errorHandler(
   err: unknown,
@@ -6,6 +7,12 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
+  // Invalid client input is a 400, not a 500 — surface which fields failed.
+  if (err instanceof ZodError) {
+    res.status(400).json({ error: "Invalid request", details: err.issues });
+    return;
+  }
+
   // Always log the full error for debugging
   if (err instanceof Error) {
     console.error(err.stack);

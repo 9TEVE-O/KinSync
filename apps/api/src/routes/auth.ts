@@ -26,9 +26,9 @@ authRouter.post("/magic-link", magicLinkLimiter, async (req, res, next) => {
     const { email } = SendMagicLinkSchema.parse(req.body);
     const user = await findOrCreateUser(email);
 
-    // In a real deployment this token is short-lived and single-use.
-    // Here we issue a JWT and embed it in the link.
-    const token = await signToken(user.id);
+    // The magic-link token is short-lived (15 min) to match the email copy;
+    // the 7-day session is issued separately on verification.
+    const token = await signToken(user.id, "15m");
     const baseUrl = process.env["WEB_URL"] ?? "http://localhost:3000";
     const magicLink = `${baseUrl}/auth/verify?token=${token}`;
 
