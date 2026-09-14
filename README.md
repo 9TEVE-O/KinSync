@@ -2,14 +2,26 @@
 
 **Your family, in sync.**
 
-KinSync is an original family-coordination SaaS scaffold built around clean module boundaries, deterministic local setup, and a practical deployment path. It is designed as a production-minded application base: clear frontend and API separation, isolated auth/billing/email/database packages, documented environment variables, and a local development flow that can be understood quickly by future contributors.
+## What this is
 
-## What it demonstrates
+KinSync is a TypeScript monorepo **scaffold** for a family-coordination SaaS: a
+Next.js web app and an Express API over isolated auth, billing, email, and
+database packages. It's a foundation to build family features on — the
+infrastructure is wired up; most product features are not built yet.
 
-- Full-stack product scaffolding with Next.js and an API service
-- Isolated packages for auth, billing, database, and email concerns
-- Deterministic local setup using Docker, Prisma, and documented environment files
-- Deployment-aware architecture rather than a demo-only prototype
+## What it coordinates
+
+- **Families** — create a family; members hold `OWNER` / `ADMIN` / `MEMBER` roles
+- **Shared events** — calendar events scoped to a family (data model in place)
+- **Passwordless sign-in** — magic-link email auth, 7-day JWT sessions
+- **Billing** — Stripe checkout, customer portal, and subscription webhooks
+- **Transactional email** — magic links via SMTP (MailHog for local dev)
+
+## What it is not
+
+Not a finished product. Family endpoints today cover only create / list / view —
+no editing, membership management, or event routes yet — and there is no
+automated test coverage for `apps/` or `packages/` beyond a LICENSE check.
 
 ---
 
@@ -71,14 +83,3 @@ KinSync/
 | [Environment Variables](docs/environment-variables.md) | Every variable explained |
 | [Deployment](docs/deployment.md) | Railway, Render, Fly.io, Docker, migrations, and webhooks |
 
----
-
-## Audit rubric
-
-| Criterion | Status |
-|-----------|--------|
-| Setup is deterministic | Pass: 5 steps, no implied knowledge |
-| Repo boundaries are clear | Pass: auth, billing, db, and email isolated in packages |
-| Deploy path is explicit | Pass: see [docs/deployment.md](docs/deployment.md) |
-| Third-party integrations are modular | Pass: Stripe in `packages/billing`, SMTP in `packages/email` |
-| Domain logic can stay isolated | Pass: route handlers are thin; logic lives in packages |
