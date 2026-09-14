@@ -39,7 +39,7 @@ npm run dev
 # Mail: http://localhost:8025
 ```
 
-**Minimum prerequisites:** Node >= 20, npm >= 10, Docker >= 24.
+**Minimum prerequisites:** Node >= 20.19, npm >= 10, Docker >= 24.
 
 ---
 
